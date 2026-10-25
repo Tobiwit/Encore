@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/*
+ * Encore design tokens. Source of truth for colour, type, spacing and radius.
+ * Contrast is verified in tests/design-tokens.test.ts — update both together.
+ * Deviation from spec v0.2: text-muted lightened #897C7D → #9C8E8F (4.16:1 on surface failed AA);
+ * added border-strong for control boundaries (3:1 non-text contrast).
+ */
+@theme {
+  --color-bg: #171516;
+  --color-surface: #211d1f;
+  --color-surface-elevated: #30292c;
+  --color-surface-glass: rgb(48 41 44 / 0.78);
+  --color-accent: #d98288;
+  --color-accent-hover: #e49aa0;
+  --color-accent-muted: #70474b;
+  --color-fg: #f4e9e8;
+  --color-fg-secondary: #b9aaaa;
+  --color-fg-muted: #9c8e8f;
+  --color-line: #403739;
+  --color-line-strong: #857579;
+  --color-success: #8eb8a0;
+  --color-warning: #e4b779;
+  --color-error: #e18a8a;
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+
+  --text-display: 2.25rem;
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.02em;
+  --text-page: 1.75rem;
+  --text-page--line-height: 1.15;
+  --text-page--letter-spacing: -0.015em;
+  --text-section: 1.25rem;
+  --text-section--line-height: 1.25;
+  --text-card: 1.0625rem;
+  --text-card--line-height: 1.3;
+  --text-body: 0.96875rem;
+  --text-body--line-height: 1.5;
+  --text-support: 0.84375rem;
+  --text-support--line-height: 1.45;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.4;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: dark;
+  --nav-height: 4rem;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+html {
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Visible, consistent focus for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-fg);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility pb-nav {
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 1.5rem);
+}
+
+@utility pt-safe {
+  padding-top: max(var(--safe-top), 0px);
+}
+
+/* Fractal glass: decorative material for selected hero surfaces only. */
+@utility glass {
+  background: var(--color-surface-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    inset 0 0 0 1px rgb(255 255 255 / 0.03);
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
