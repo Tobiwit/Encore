@@ -14,11 +14,11 @@ const RANGE_LABEL: Record<string, string> = { short_term: "Last 4 weeks", medium
 
 type ImportResult = Awaited<ReturnType<typeof refreshSpotifyNow>>;
 
-export function ImportStep({ nextHref }: { nextHref: string }) {
+export function ImportStep({ nextHref, alreadyImported = null }: { nextHref: string; alreadyImported?: number | null }) {
   const router = useRouter();
   const [result, setResult] = useState<ImportResult | null>(null);
   const [pending, start] = useTransition();
-  const started = useRef(false);
+  const started = useRef(alreadyImported !== null);
 
   const run = () =>
     start(async () => {
@@ -30,6 +30,24 @@ export function ImportStep({ nextHref }: { nextHref: string }) {
     started.current = true;
     run();
   }, []);
+
+  if (alreadyImported !== null && !result && !pending) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-lg bg-surface p-5">
+          <p className="flex items-center gap-2 font-semibold text-success">
+            <IconCheck /> Already imported
+          </p>
+          <p className="mt-1 text-support text-fg-secondary">
+            {alreadyImported} artist{alreadyImported === 1 ? " is" : "s are"} on your fan list. Weekly refreshes keep it up to date.
+          </p>
+        </div>
+        <Button size="lg" className="w-full" onClick={() => router.push(nextHref)}>
+          Continue
+        </Button>
+      </div>
+    );
+  }
 
   if (pending || !result) {
     return (
@@ -43,6 +61,17 @@ export function ImportStep({ nextHref }: { nextHref: string }) {
           <p className="font-semibold">Importing from Spotify…</p>
           <p className="text-support text-fg-secondary">This usually takes a few seconds.</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!result.ok && result.cooldown) {
+    return (
+      <div className="space-y-6">
+        <p className="rounded-lg bg-surface p-5 text-support text-fg-secondary">Your artists were imported a moment ago, so there&apos;s nothing new yet.</p>
+        <Button size="lg" className="w-full" onClick={() => router.push(nextHref)}>
+          Continue
+        </Button>
       </div>
     );
   }

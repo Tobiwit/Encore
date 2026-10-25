@@ -189,7 +189,8 @@ const MANUAL_SYNC_COOLDOWN_MS = 10 * 60_000;
 
 /** Manual refresh, rate-limited per account to respect Spotify quotas. */
 export async function refreshSpotifyNow(): Promise<
-  { ok: true; newArtists: number; ranges: Record<string, number | "failed"> } | { ok: false; error: string; reconnect?: boolean }
+  | { ok: true; newArtists: number; ranges: Record<string, number | "failed"> }
+  | { ok: false; error: string; reconnect?: boolean; cooldown?: boolean }
 > {
   const user = await requireUser();
   const admin = createAdminClient();
@@ -204,7 +205,7 @@ export async function refreshSpotifyNow(): Promise<
   const lastAttempt = account.last_sync_attempt_at ? Date.parse(account.last_sync_attempt_at) : 0;
   // The first import (no successful sync yet) is never throttled.
   if (account.last_successful_sync_at && Date.now() - lastAttempt < MANUAL_SYNC_COOLDOWN_MS) {
-    return { ok: false, error: "Your music was refreshed a few minutes ago. Try again shortly." };
+    return { ok: false, cooldown: true, error: "Your music was refreshed a few minutes ago. Try again shortly." };
   }
   await admin.from("connected_accounts").update({ last_sync_attempt_at: new Date().toISOString() }).eq("id", account.id);
 

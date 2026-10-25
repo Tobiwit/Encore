@@ -30,6 +30,16 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
   const { data: profile } = await supabase.from("users").select("display_name, fan_list_visibility, default_intention_visibility, onboarding_completed_at").eq("id", user.id).maybeSingle();
   if (!profile) redirect("/");
 
+  // Coming back to the import step (reload, back button) must not re-run or "fail" a finished import.
+  let imported: number | null = null;
+  if (step === "import") {
+    const [{ data: account }, { count }] = await Promise.all([
+      supabase.from("connected_accounts").select("last_successful_sync_at").eq("user_id", user.id).eq("provider", "spotify").maybeSingle(),
+      supabase.from("user_artists").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_dismissed", false),
+    ]);
+    if (account?.last_successful_sync_at) imported = count ?? 0;
+  }
+
   return (
     <main id="main" className="relative isolate min-h-dvh px-4 pb-12 pt-safe sm:px-6">
       <GeometricBackground className="-z-10 opacity-60" />
@@ -54,7 +64,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
                 We&apos;re reading your Spotify top artists from the last 4 weeks, 6 months and all time. You decide who stays on your list.
               </p>
               <div className="mt-8">
-                <ImportStep nextHref="/onboarding?step=artists" />
+                <ImportStep nextHref="/onboarding?step=artists" alreadyImported={imported} />
               </div>
             </>
           ) : null}
