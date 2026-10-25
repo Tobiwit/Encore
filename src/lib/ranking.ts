@@ -11,7 +11,8 @@ export type RankInput = {
   eventId: string;
   lifecycle: Lifecycle;
   startsAt: string | null;
-  createdAt: string;
+  /** When Encore first saw a newly announced show; null for back-filled (already known) shows. */
+  announcedAt: string | null;
   lastVerifiedAt: string | null;
   sales: SalePhase[];
   artists: { interest: InterestLevel; pinned: boolean; matchConfidence: number }[];
@@ -105,7 +106,7 @@ export function rankEvent(e: RankInput, now = new Date()): Ranked | null {
   const section: Ranked["section"] =
     nextSale && nextSale.getTime() - t <= 14 * DAY
       ? "sale_soon"
-      : t - Date.parse(e.createdAt) <= 7 * DAY
+      : e.announcedAt && t - Date.parse(e.announcedAt) <= 7 * DAY
         ? "new"
         : "upcoming";
 

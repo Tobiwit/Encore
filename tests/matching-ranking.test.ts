@@ -73,7 +73,7 @@ function input(overrides: Partial<RankInput> = {}): RankInput {
     eventId: "e1",
     lifecycle: "announced",
     startsAt: iso(60 * day),
-    createdAt: iso(-30 * day),
+    announcedAt: null,
     lastVerifiedAt: iso(-3600_000),
     sales: [],
     artists: [{ interest: "like", pinned: false, matchConfidence: 1 }],
@@ -137,6 +137,12 @@ describe("rankEvent", () => {
     const nameOnly = rankEvent(input({ artists: [{ interest: "like", pinned: false, matchConfidence: 0.7 }] }), NOW)!;
     expect(nameOnly.score).toBeLessThan(verified.score);
     expect(rankEvent(input({ dismissed: true }), NOW)).toBeNull();
+  });
+
+  it("only counts genuinely new shows as just announced, not back-filled ones", () => {
+    expect(rankEvent(input({ announcedAt: iso(-2 * day) }), NOW)!.section).toBe("new");
+    expect(rankEvent(input({ announcedAt: null }), NOW)!.section).toBe("upcoming");
+    expect(rankEvent(input({ announcedAt: iso(-10 * day) }), NOW)!.section).toBe("upcoming");
   });
 
   it("does not let friend activity bury an imminent sale", () => {

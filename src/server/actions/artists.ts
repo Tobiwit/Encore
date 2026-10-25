@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { bestImage, searchArtists, SpotifyAuthError, type SpotifyArtist } from "@/server/spotify/client";
+import { searchConcertsForArtist } from "@/server/jobs/events";
 import { getValidAccessToken } from "@/server/spotify/sync";
 import type { ActionResult } from "./events";
 
@@ -57,9 +59,15 @@ export async function followArtist(artistId: string, source: "friend_suggestion"
     ? await supabase.from("user_artists").update({ is_dismissed: false }).eq("id", existing.id)
     : await supabase.from("user_artists").insert({ user_id: user.id, artist_id: id.data, added_source: source, interest_level: "curious" });
   if (error) return { ok: false, error: "Could not add this artist." };
+  searchConcertsSoon(id.data);
   revalidatePath("/artists");
   revalidatePath(`/artists/${id.data}`);
   return { ok: true };
+}
+
+/** Look a newly followed artist up on Ticketmaster right after responding (see searchConcertsForArtist). */
+function searchConcertsSoon(artistId: string) {
+  after(() => searchConcertsForArtist(createAdminClient(), artistId));
 }
 
 export type ArtistSearchResult = { spotifyId: string; name: string; imageUrl: string | null; genres: string[]; followed: boolean };
@@ -157,6 +165,7 @@ export async function addSpotifyArtist(spotifyId: string, searchQuery: string): 
     : await supabase.from("user_artists").insert({ user_id: user.id, artist_id: artistId, added_source: "manual" });
   if (linkError) return { ok: false, error: "Could not add this artist." };
 
+  searchConcertsSoon(artistId);
   revalidatePath("/artists");
   return { ok: true, artistId };
 }

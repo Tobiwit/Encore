@@ -245,14 +245,14 @@ isOneToOne: false
                   ]
                 },"events": {
                   Row: {
-                    "canonical_title": string,"created_at": string,"ends_at": string | null,"event_url": string | null,"id": string,"image_url": string | null,"last_verified_at": string,"lifecycle_status": Database["public"]['Enums']["event_lifecycle_status"],"start_date_local": string | null,"start_time_tba": boolean,"starts_at": string | null,"timezone": string | null,"updated_at": string,"venue_id": string | null
+                    "announced_at": string | null,"canonical_title": string,"created_at": string,"ends_at": string | null,"event_url": string | null,"id": string,"image_url": string | null,"last_verified_at": string,"lifecycle_status": Database["public"]['Enums']["event_lifecycle_status"],"start_date_local": string | null,"start_time_tba": boolean,"starts_at": string | null,"timezone": string | null,"updated_at": string,"venue_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "canonical_title": string,"created_at"?: string,"ends_at"?: string | null,"event_url"?: string | null,"id"?: string,"image_url"?: string | null,"last_verified_at"?: string,"lifecycle_status"?: Database["public"]['Enums']["event_lifecycle_status"],"start_date_local"?: string | null,"start_time_tba"?: boolean,"starts_at"?: string | null,"timezone"?: string | null,"updated_at"?: string,"venue_id"?: string | null
+                    "announced_at"?: string | null,"canonical_title": string,"created_at"?: string,"ends_at"?: string | null,"event_url"?: string | null,"id"?: string,"image_url"?: string | null,"last_verified_at"?: string,"lifecycle_status"?: Database["public"]['Enums']["event_lifecycle_status"],"start_date_local"?: string | null,"start_time_tba"?: boolean,"starts_at"?: string | null,"timezone"?: string | null,"updated_at"?: string,"venue_id"?: string | null
                   }
                   Update: {
-                    "canonical_title"?: string,"created_at"?: string,"ends_at"?: string | null,"event_url"?: string | null,"id"?: string,"image_url"?: string | null,"last_verified_at"?: string,"lifecycle_status"?: Database["public"]['Enums']["event_lifecycle_status"],"start_date_local"?: string | null,"start_time_tba"?: boolean,"starts_at"?: string | null,"timezone"?: string | null,"updated_at"?: string,"venue_id"?: string | null
+                    "announced_at"?: string | null,"canonical_title"?: string,"created_at"?: string,"ends_at"?: string | null,"event_url"?: string | null,"id"?: string,"image_url"?: string | null,"last_verified_at"?: string,"lifecycle_status"?: Database["public"]['Enums']["event_lifecycle_status"],"start_date_local"?: string | null,"start_time_tba"?: boolean,"starts_at"?: string | null,"timezone"?: string | null,"updated_at"?: string,"venue_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -642,7 +642,7 @@ isOneToOne: false
                            },
 "artists_due_for_event_refresh":
 { Args: { "p_limit": number,"p_provider": string }; Returns: {
-              "artist_id": string,"canonical_name": string,"external_artist_id": string
+              "artist_id": string,"canonical_name": string,"external_artist_id": string,"first_fetch": boolean
             }[]
                            },
 "artists_needing_provider_lookup":

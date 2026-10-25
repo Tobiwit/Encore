@@ -20,6 +20,7 @@ export type EventSummary = {
   distanceKm: number | null;
   lastVerifiedAt: string | null;
   createdAt: string;
+  announcedAt: string | null;
   sales: SalePhase[];
   price: PriceSummary | null;
   artists: { id: string; name: string; imageUrl: string | null; interest: InterestLevel | null; pinned: boolean; matchConfidence: number }[];

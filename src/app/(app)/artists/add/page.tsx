@@ -4,6 +4,8 @@ import { BackLink } from "@/components/BackLink";
 import { PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Add artists" };
+// Adding an artist continues a Ticketmaster lookup via after().
+export const maxDuration = 60;
 
 export default function AddArtistsPage() {
   return (

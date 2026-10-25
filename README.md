@@ -116,6 +116,8 @@ Jobs are safe to run concurrently or retry: claims use `FOR UPDATE SKIP LOCKED` 
 
 ## Not yet done
 
+- Ticket availability (sold out / few left): the Discovery API has no such field, and Ticketmaster's Inventory Status API rejects standard keys ("Invalid ApiKey for given resource"). It needs partner access from Ticketmaster; Encore only shows the provider's "off sale" status until then.
+
 - **Spotify and Ticketmaster against live APIs.** Both integrations are implemented against the documented APIs, but no real credentials were available while building, so neither has been exercised live. Spotify development-mode and quota restrictions change over time; check the current Web API policies before launch.
 - Song previews come from Deezer's public API (popular tracks + 30-second previews), because Spotify no longer offers top tracks or preview URLs to development-mode apps. Audio streams from Deezer and is never stored. **Review Deezer's API terms for commercial use before a public launch.**
 - Phase 2/3 items: companion invitations ("Ask to join"), reporting, artist swipe discovery, EVENTIM adapter, affiliate links.

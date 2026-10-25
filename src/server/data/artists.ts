@@ -114,7 +114,7 @@ export async function getArtistDetail(supabase: Client, userId: string, artistId
 
   const [{ data: providers }, { data: mine }, { data: ranks }, { data: eventLinks }, { data: friendRows }] = await Promise.all([
     supabase.from("artist_provider_ids").select("provider, external_url, external_artist_id, match_method, match_confidence").eq("artist_id", artistId),
-    supabase.from("user_artists").select("interest_level, is_pinned, is_dismissed, notify_enabled, added_source, interest_source, long_time_fan_since").eq("user_id", userId).eq("artist_id", artistId).maybeSingle(),
+    supabase.from("user_artists").select("interest_level, is_pinned, is_dismissed, notify_enabled, added_source, interest_source, long_time_fan_since, created_at").eq("user_id", userId).eq("artist_id", artistId).maybeSingle(),
     supabase.from("artist_listening_snapshots").select("time_range, rank, synced_at").eq("user_id", userId).eq("artist_id", artistId).order("synced_at", { ascending: false }).limit(6),
     supabase
       .from("event_artists")

@@ -9,7 +9,7 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 
 export const EVENT_SELECT = `
   id, canonical_title, starts_at, start_date_local, start_time_tba, timezone, lifecycle_status, image_url,
-  last_verified_at, created_at, event_url,
+  last_verified_at, created_at, announced_at, event_url,
   venue:venues(name, city, country_code, latitude, longitude, address, postal_code),
   event_sales(id, sale_type, sale_name, starts_at, ends_at, start_time_unknown, record:event_provider_records(is_primary)),
   ticket_offers(min_price, max_price, currency, offer_type, is_resale, destination_url, provider),
@@ -27,6 +27,7 @@ type RawEvent = {
   image_url: string | null;
   last_verified_at: string;
   created_at: string;
+  announced_at: string | null;
   event_url: string | null;
   venue: { name: string; city: string | null; country_code: string | null; latitude: number | null; longitude: number | null; address: string | null; postal_code: string | null } | null;
   event_sales: { id: string; sale_type: SalePhase["sale_type"]; sale_name: string | null; starts_at: string | null; ends_at: string | null; start_time_unknown: boolean; record: { is_primary: boolean } | null }[];
@@ -95,6 +96,7 @@ export function toSummary(
     distanceKm: near?.km ?? null,
     lastVerifiedAt: e.last_verified_at,
     createdAt: e.created_at,
+    announcedAt: e.announced_at,
     sales: e.event_sales.map((s) => ({
       id: s.id,
       sale_type: s.sale_type,
@@ -211,7 +213,7 @@ export async function getDiscoverFeed(supabase: Client, userId: string): Promise
       eventId: s.id,
       lifecycle: s.lifecycle,
       startsAt: s.startsAt,
-      createdAt: s.createdAt,
+      announcedAt: s.announcedAt,
       lastVerifiedAt: s.lastVerifiedAt,
       sales: s.sales,
       artists: s.artists.filter((a) => a.interest).map((a) => ({ interest: a.interest!, pinned: a.pinned, matchConfidence: a.matchConfidence })),

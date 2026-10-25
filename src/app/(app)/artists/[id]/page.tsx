@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { FollowArtistButton, NotifyToggle, PinToggle, RemoveArtistButton } from "@/components/ArtistActions";
 import { ArtistInterestControl } from "@/components/ArtistInterestControl";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { BackLink } from "@/components/BackLink";
 import { EventCard } from "@/components/EventCard";
 import { FriendAvatarStack } from "@/components/FriendAvatarStack";
@@ -17,6 +18,8 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import { getArtistDetail } from "@/server/data/artists";
 
 export const metadata: Metadata = { title: "Artist" };
+// "Add to fan list" continues a Ticketmaster lookup via after().
+export const maxDuration = 60;
 
 const RANGE_LABEL: Record<string, string> = { short_term: "last 4 weeks", medium_term: "last 6 months", long_term: "all time" };
 const SOURCE_LABEL: Record<string, string> = {
@@ -26,6 +29,10 @@ const SOURCE_LABEL: Record<string, string> = {
   discovery: "Added while discovering",
 };
 
+function isRecent(iso: string, withinMs: number) {
+  return Date.now() - Date.parse(iso) < withinMs;
+}
+
 export default async function ArtistPage({ params }: PageProps<"/artists/[id]">) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -34,6 +41,13 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
   const detail = await getArtistDetail(supabase, user.id, id);
   if (!detail) notFound();
   const { artist, mine, events, friends, ranks } = detail;
+
+  // Just followed and not yet looked up: the lookup runs in the background, so poll briefly.
+  const searching =
+    Boolean(mine) &&
+    !artist.events_refreshed_at &&
+    !(artist.provider_lookup_at && !detail.ticketmaster) &&
+    isRecent(mine!.created_at, 2 * 60_000);
 
   const rankText = [...ranks.entries()].map(([range, rank]) => `#${rank} ${RANGE_LABEL[range] ?? range}`).join(" · ");
 
@@ -100,7 +114,12 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
 
       <section aria-labelledby="concerts">
         <SectionHeader id="concerts" title="Upcoming concerts" />
-        {events.length ? (
+        {searching ? <AutoRefresh everyMs={4000} /> : null}
+        {searching && !events.length ? (
+          <p role="status" className="rounded-lg bg-surface px-4 py-3 text-support text-fg-secondary">
+            Looking for {artist.canonical_name} on Ticketmaster… concerts appear here in a few seconds.
+          </p>
+        ) : events.length ? (
           <ul className="space-y-3">
             {events.map((e) => (
               <li key={e.id}>
