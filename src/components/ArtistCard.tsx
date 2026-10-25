@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { describeRanks, RANGE_SHORT, RANGES, type Ranks, type TimeRange } from "@/lib/listening";
 import type { ArtistSummary } from "@/lib/types";
 import { IconPin } from "./icons";
 import { RemoteImage } from "./RemoteImage";
@@ -33,19 +34,66 @@ export function ArtistCard({ artist, href }: { artist: Pick<ArtistSummary, "id" 
   );
 }
 
-/** Dense list row with source and interest indicators. */
-export function ArtistRow({ artist, trailing }: { artist: ArtistSummary; trailing?: React.ReactNode }) {
+const STATUS_LABEL: Record<NonNullable<ArtistSummary["status"]>, string> = {
+  long_time: "Long-time fan",
+  steady: "Steady favourite",
+  rotation: "In rotation",
+  unranked: "",
+};
+
+/** Ranks for 4 weeks / 6 months / all time; absent ranges are shown dimmed. */
+export function RangeMarks({ ranks, highlight }: { ranks?: Ranks; highlight?: TimeRange }) {
+  return (
+    <span className="flex gap-1" aria-hidden="true">
+      {RANGES.map((r) => {
+        const rank = ranks?.[r];
+        return (
+          <span
+            key={r}
+            className={cn(
+              "tabular inline-flex h-5 items-center rounded-full px-1.5 text-meta font-semibold leading-none",
+              rank ? (r === highlight ? "bg-accent text-bg" : "bg-surface-elevated text-fg-secondary") : "text-fg-muted ring-1 ring-inset ring-line",
+            )}
+          >
+            {RANGE_SHORT[r]}
+            {rank ? ` ${rank}` : ""}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** Dense list row: listening status, per-range ranks and interest level. */
+export function ArtistRow({
+  artist,
+  trailing,
+  position,
+  highlight,
+}: {
+  artist: ArtistSummary;
+  trailing?: React.ReactNode;
+  /** Leading rank number in ranked views. */
+  position?: number;
+  highlight?: TimeRange;
+}) {
+  const status = artist.status ? STATUS_LABEL[artist.status] : "";
+  const meta = [status || SOURCE_LABEL[artist.source], artist.upcomingCount ? `${artist.upcomingCount} upcoming` : ""].filter(Boolean).join(" · ");
   return (
     <li className="relative flex items-center gap-3 py-2.5">
+      {position ? <span className="tabular w-6 shrink-0 text-right text-card font-semibold text-fg-secondary">{position}</span> : null}
       <RemoteImage src={artist.imageUrl} alt="" rounded="rounded-full" className="size-12 shrink-0" />
       <div className="min-w-0 flex-1">
         <Link href={`/artists/${artist.id}`} className="block truncate font-semibold text-fg after:absolute after:inset-0 after:content-['']">
           {artist.name}
         </Link>
-        <p className="truncate text-meta text-fg-muted">
-          {SOURCE_LABEL[artist.source]}
-          {typeof artist.upcomingCount === "number" && artist.upcomingCount > 0 ? ` · ${artist.upcomingCount} upcoming` : ""}
-        </p>
+        <p className={cn("truncate text-meta", artist.status === "long_time" ? "text-accent" : "text-fg-muted")}>{meta}</p>
+        {artist.ranks ? (
+          <div className="mt-1">
+            <RangeMarks ranks={artist.ranks} highlight={highlight} />
+            <span className="sr-only">{describeRanks(artist.ranks)}</span>
+          </div>
+        ) : null}
       </div>
       <span
         className={cn(

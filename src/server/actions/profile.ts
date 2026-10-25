@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { runJob } from "@/server/jobs";
 import { syncSpotifyAccount } from "@/server/spotify/sync";
 import type { ActionResult } from "./events";
 
@@ -214,6 +216,9 @@ export async function refreshSpotifyNow(): Promise<
       ? { ok: false, error: "Spotify access was revoked. Reconnect to keep your artists up to date.", reconnect: true }
       : { ok: false, error: "Spotify could not be reached. Your existing artists are unchanged; try again later." };
   }
+  // Look up the newly imported artists on Ticketmaster right away instead of waiting for the
+  // daily run. Runs after the response, within the page's maxDuration.
+  after(() => runJob("concert-search"));
   return { ok: true, newArtists: outcome.newArtists, ranges: outcome.ranges };
 }
 

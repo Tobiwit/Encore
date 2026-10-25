@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArtistCard } from "@/components/ArtistCard";
+import { ConcertSearchStatus, getConcertSearchStatus } from "@/components/ConcertSearchStatus";
 import { EventCard } from "@/components/EventCard";
 import { FriendActivityItem } from "@/components/FriendAvatarStack";
 import { IconBell, IconMapPin, IconPlus } from "@/components/icons";
@@ -8,7 +9,6 @@ import { SaleCountdown } from "@/components/SaleCountdown";
 import { EmptyState, InlineNotice } from "@/components/states";
 import { ButtonLink, SectionHeader } from "@/components/ui";
 import { deriveSaleState } from "@/lib/events";
-import { formatRelativePast } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { getDiscoverFeed, getEventSummaries } from "@/server/data/events";
 
@@ -34,6 +34,7 @@ export default async function DiscoverPage() {
     supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("read_at", null),
   ]);
 
+  const searchStatus = await getConcertSearchStatus(supabase);
   const activityEvents = await getEventSummaries(supabase, user.id, [...new Set((activity ?? []).map((a) => a.event_id))]);
   const activityTitles = new Map(activityEvents.map((e) => [e.id, e.title]));
 
@@ -90,20 +91,23 @@ export default async function DiscoverPage() {
           action={<ButtonLink href="/artists/add">Add artists</ButtonLink>}
         />
       ) : nothingYet ? (
-        <EmptyState
-          decorative
-          title="No upcoming concerts found yet"
-          body={
-            feed.lastEventRefresh
-              ? `We last checked ticket providers ${formatRelativePast(feed.lastEventRefresh)}. We'll alert you when one of your artists announces a show${home ? ` near ${home.cityName}` : ""}.`
-              : "We're still matching your artists with ticket providers. This usually takes a little while after you add artists."
-          }
-          action={
-            <ButtonLink href="/artists" variant="secondary">
-              Review your artists
-            </ButtonLink>
-          }
-        />
+        <div className="space-y-3">
+          <EmptyState
+            decorative
+            title="No upcoming concerts found yet"
+            body={
+              searchStatus && searchStatus.checked < searchStatus.followed
+                ? "We're still looking up your artists on Ticketmaster. Concerts appear here as soon as we find them."
+                : `None of your artists has an announced show${home ? ` near ${home.cityName}` : ""} right now. We check daily and will alert you when that changes.`
+            }
+            action={
+              <ButtonLink href="/artists" variant="secondary">
+                Review your artists
+              </ButtonLink>
+            }
+          />
+          {searchStatus ? <ConcertSearchStatus status={searchStatus} /> : null}
+        </div>
       ) : null}
 
       {featured && featuredSale?.kind === "upcoming" ? (

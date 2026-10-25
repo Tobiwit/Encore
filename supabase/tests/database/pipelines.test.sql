@@ -50,9 +50,9 @@ create temp table r1 as select public.ingest_provider_event(p) as r from payload
 select ok((select (r ->> 'created')::boolean from r1), 'first ingest creates an event');
 create temp table r2 as select public.ingest_provider_event(p) as r from payload;
 select ok(not (select (r ->> 'created')::boolean from r2), 'second ingest is idempotent');
-select is((select count(*)::int from public.events), 1, 'one canonical event');
-select is((select count(*)::int from public.event_sales), 1, 'one sale phase');
-select is((select count(*)::int from public.event_artists where match_confidence = 1), 1, 'artist linked with confidence');
+select is((select count(*)::int from public.events e join public.venue_provider_ids v on v.venue_id = e.venue_id where v.external_venue_id = 'V1'), 1, 'one canonical event');
+select is((select count(*)::int from public.event_sales where event_id = (select (r ->> 'event_id')::uuid from r1)), 1, 'one sale phase');
+select is((select count(*)::int from public.event_artists where event_id = (select (r ->> 'event_id')::uuid from r1) and match_confidence = 1), 1, 'artist linked with confidence');
 
 -- A VIP package listing for the same show attaches to the same canonical event.
 select public.ingest_provider_event(p || jsonb_build_object('external_event_id', 'E1-VIP', 'title', 'Band One – VIP Package',
@@ -60,9 +60,9 @@ select public.ingest_provider_event(p || jsonb_build_object('external_event_id',
   'offers', jsonb_build_array(jsonb_build_object('offer_key', 'package:EUR', 'offer_type', 'package', 'min_price', 199,
                               'max_price', 199, 'currency', 'EUR', 'destination_url', 'https://example.test/vip'))))
 from payload;
-select is((select count(*)::int from public.events), 1, 'VIP listing does not create a second concert');
-select is((select count(*)::int from public.ticket_offers), 2, 'VIP listing becomes an extra offer');
-select is((select canonical_title from public.events), 'Band One – Tour', 'canonical title stays from primary listing');
+select is((select count(*)::int from public.events e join public.venue_provider_ids v on v.venue_id = e.venue_id where v.external_venue_id = 'V1'), 1, 'VIP listing does not create a second concert');
+select is((select count(*)::int from public.ticket_offers where event_id = (select (r ->> 'event_id')::uuid from r1)), 2, 'VIP listing becomes an extra offer');
+select is((select canonical_title from public.events where id = (select (r ->> 'event_id')::uuid from r1)), 'Band One – Tour', 'canonical title stays from primary listing');
 
 -- Notification scheduling ---------------------------------------------------------
 select is((public.schedule_event_notifications((select (r ->> 'event_id')::uuid from r1), true) ->> 'scheduled')::int, 3,
@@ -77,17 +77,17 @@ create temp table r3 as select public.ingest_provider_event(p || jsonb_build_obj
 select ok(jsonb_array_length((select r -> 'changes' from r3)) = 1, 'sale-time change is audited');
 select is((public.schedule_event_notifications((select (r ->> 'event_id')::uuid from r3), false) ->> 'cancelled')::int, 2,
   'stale sale reminders are cancelled');
-select is((select count(*)::int from public.notification_jobs where status = 'pending'
+select is((select count(*)::int from public.notification_jobs where status = 'pending' and event_id = (select (r ->> 'event_id')::uuid from r1)
            and notification_type in ('general_sale_starting_soon', 'sale_open')), 2, 'fresh reminders scheduled');
 
 -- Cancellation suppresses all future sale reminders.
 create temp table r4 as select public.ingest_provider_event(p || jsonb_build_object('lifecycle_status', 'cancelled')) as r from payload;
 select public.schedule_event_notifications((select (r ->> 'event_id')::uuid from r4), false, (select r -> 'changes' from r4));
-select is((select count(*)::int from public.notification_jobs where status = 'pending'
+select is((select count(*)::int from public.notification_jobs where status = 'pending' and event_id = (select (r ->> 'event_id')::uuid from r1)
            and notification_type in ('general_sale_starting_soon', 'sale_open')), 0, 'cancelled event has no pending sale reminders');
 
 -- Claiming is exclusive.
-update public.notification_jobs set scheduled_at = now() - interval '1 minute' where status = 'pending';
+update public.notification_jobs set scheduled_at = now() - interval '1 minute' where status = 'pending' and event_id = (select (r ->> 'event_id')::uuid from r1);
 select ok((select count(*) from public.claim_notification_jobs(10)) >= 1, 'due jobs can be claimed');
 
 select * from finish();

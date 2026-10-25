@@ -63,7 +63,7 @@ export default function LegalPage() {
       </Section>
 
       <Section title="Attribution">
-        <p>Artist names, images and links: Spotify. Event, venue, sale and price data: Ticketmaster Discovery API.</p>
+        <p>Artist names, images and links: Spotify. Event, venue, sale and price data: Ticketmaster Discovery API. Popular songs and 30-second previews: Deezer, streamed directly from Deezer and never stored by Encore.</p>
       </Section>
     </main>
   );

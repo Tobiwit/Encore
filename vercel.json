@@ -1,10 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    { "path": "/api/cron/notifications-deliver", "schedule": "* * * * *" },
-    { "path": "/api/cron/event-refresh", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/artist-matching", "schedule": "15,45 * * * *" },
-    { "path": "/api/cron/spotify-sync", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/retention", "schedule": "30 3 * * *" }
-  ]
+  "crons": [{ "path": "/api/cron/daily", "schedule": "0 5 * * *" }]
 }

@@ -9,7 +9,7 @@ config({ path: ".env.local" });
 config();
 
 const { JOBS, runJob } = await import("@/server/jobs");
-type JobName = keyof typeof JOBS;
+type JobName = import("@/server/jobs").JobName;
 
 const running = new Set<JobName>();
 let stopping = false;
@@ -26,7 +26,8 @@ async function tick(name: JobName) {
 
 const once = process.argv.includes("--once");
 const only = process.argv.find((a) => a.startsWith("--job="))?.slice("--job=".length) as JobName | undefined;
-const names = (Object.keys(JOBS) as JobName[]).filter((n) => !only || n === only);
+// Without --job, run the jobs that have a cadence (the composite `daily` job is for hosted cron).
+const names = (Object.keys(JOBS) as JobName[]).filter((n) => (only ? n === only : JOBS[n].everyMs !== undefined));
 
 if (once) {
   for (const name of names) await tick(name);
@@ -36,7 +37,7 @@ if (once) {
 console.log(JSON.stringify({ level: "info", msg: "worker started", jobs: names }));
 const timers = names.map((name) => {
   void tick(name);
-  return setInterval(() => void tick(name), JOBS[name].everyMs);
+  return setInterval(() => void tick(name), JOBS[name].everyMs ?? 24 * 3600_000);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

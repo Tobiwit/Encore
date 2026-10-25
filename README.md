@@ -13,7 +13,7 @@ This repository implements the **Phase 1 foundation** of the product spec (v0.2)
 | App | Next.js 16 (App Router, TypeScript, Server Actions), Tailwind CSS v4 |
 | Data | Supabase Postgres with row-level security on every table |
 | Auth | Supabase Auth with Spotify OAuth (authorisation code + PKCE) |
-| Jobs | `pnpm worker` (long-running) or `/api/cron/*` (hosted cron), both backed by Postgres state |
+| Jobs | Daily Vercel cron for data, `pg_cron` every 5 min for reminder delivery, or `pnpm worker` locally; all state in Postgres |
 | Tests | Vitest (unit) and pgTAP (database access control and pipelines) |
 
 ## Getting started
@@ -55,7 +55,7 @@ Set `TICKETMASTER_API_KEY`. Without it, the event jobs log `skipped` and the app
 | `pnpm db:test` | pgTAP: RLS, privilege and pipeline tests against the local database |
 | `pnpm db:reset` | Recreate the local database from migrations |
 | `pnpm db:types` | Regenerate `src/lib/database.types.ts` from the local schema |
-| `pnpm worker` / `worker:once` | Run background jobs continuously or once (`--job=<name>` to run a single job) |
+| `pnpm worker` / `worker:once` | Run background jobs continuously or once (`--job=<name>` for one job, e.g. `--job=concert-search`) |
 
 ## Architecture
 
@@ -101,16 +101,23 @@ tests/                     unit tests
 
 1. Create a Supabase project, run `supabase link` and `supabase db push`, and enable the Spotify provider in Auth (same client ID/secret; add the hosted callback URL in Spotify).
 2. Deploy the Next.js app (e.g. Vercel) with all variables from `.env.example`. Set `NEXT_PUBLIC_APP_URL` to the public URL and add `<app-url>/auth/callback` to Supabase Auth → URL configuration → redirect URLs.
-3. Schedule jobs with either:
-   - `vercel.json` crons, which call `/api/cron/<job>` with `Authorization: Bearer $CRON_SECRET` (per-minute crons need a paid Vercel plan), or
-   - a long-running `pnpm worker` process on any Node host.
+3. Scheduling (works on the free Vercel Hobby plan):
+   - **Data, once a day:** `vercel.json` runs `/api/cron/daily` at 05:00 UTC. It runs the weekly Spotify sync for accounts that are due, matches new artists on Ticketmaster, refreshes concert lists (one request per artist), delivers anything already due and cleans up, all within a 270 s budget. Work that doesn't fit is picked up the next day, oldest first.
+   - **Right after a Spotify import**, the same concert search runs for the new artists via `after()`, so new users don't wait for the next daily run.
+   - **Reminders, every 5 minutes:** Postgres (`pg_cron` + `pg_net`) calls `/api/cron/notifications-deliver`, which only delivers reminders that were already scheduled. It needs two Vault secrets, set once in the Supabase SQL editor:
+     ```sql
+     select vault.create_secret('https://<your-app>.vercel.app', 'encore_app_url');
+     select vault.create_secret('<same value as CRON_SECRET>', 'encore_cron_secret');
+     ```
+     Without them the trigger does nothing (local development uses `pnpm worker` instead).
+   - Alternatively, run a long-running `pnpm worker` on any Node host.
 
 Jobs are safe to run concurrently or retry: claims use `FOR UPDATE SKIP LOCKED` leases and every write is idempotent. Failed runs are recorded in `job_runs`.
 
 ## Not yet done
 
 - **Spotify and Ticketmaster against live APIs.** Both integrations are implemented against the documented APIs, but no real credentials were available while building, so neither has been exercised live. Spotify development-mode and quota restrictions change over time; check the current Web API policies before launch.
-- Audio previews: Spotify no longer returns preview URLs for new apps. `MusicPreviewPlayer` supports an authorised preview URL but currently falls back to "Listen on Spotify".
+- Song previews come from Deezer's public API (popular tracks + 30-second previews), because Spotify no longer offers top tracks or preview URLs to development-mode apps. Audio streams from Deezer and is never stored. **Review Deezer's API terms for commercial use before a public launch.**
 - Phase 2/3 items: companion invitations ("Ask to join"), reporting, artist swipe discovery, EVENTIM adapter, affiliate links.
 - Legal: `/legal` holds draft product notes and must be replaced by a reviewed privacy policy, imprint and terms before public launch.
 - Native push reliability differs per platform: iOS supports Web Push only for installed PWAs. The in-app inbox is always the source of truth.

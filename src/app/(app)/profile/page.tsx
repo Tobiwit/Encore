@@ -21,6 +21,8 @@ import { signOut } from "@/server/actions/profile";
 import { getUserLocations } from "@/server/data/events";
 
 export const metadata: Metadata = { title: "Profile" };
+// Server actions on this page (Spotify import) continue a concert search via after().
+export const maxDuration = 300;
 
 function Card({ children }: { children: React.ReactNode }) {
   return <div className="rounded-lg bg-surface px-4 py-2">{children}</div>;
@@ -165,7 +167,7 @@ export default async function ProfilePage() {
             Privacy, terms &amp; attribution
           </Link>
         </p>
-        <p>Artist data from Spotify. Event data from Ticketmaster.</p>
+        <p>Artist data from Spotify. Event data from Ticketmaster. Song previews from Deezer.</p>
       </footer>
     </div>
   );

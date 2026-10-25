@@ -11,6 +11,19 @@ const BASE = "https://app.ticketmaster.com/discovery/v2";
 // Discovery API default quota is 5 requests/second; stay below it.
 const throttle = createThrottle(4);
 
+export function filterToCountries(events: TmEvent[], countries: string[], now: Date): NormalizedEvent[] {
+  const allowed = new Set(countries);
+  const seen = new Set<string>();
+  const results: NormalizedEvent[] = [];
+  for (const raw of events) {
+    if (seen.has(raw.id)) continue;
+    seen.add(raw.id);
+    const normalized = normalizeTicketmasterEvent(raw, now);
+    if (normalized?.venue?.country_code && allowed.has(normalized.venue.country_code)) results.push(normalized);
+  }
+  return results;
+}
+
 export function createTicketmasterAdapter(config: { apiKey: string; countries: string[] }): TicketProviderAdapter {
   async function get<T>(path: string, params: Record<string, string>): Promise<T> {
     await throttle();
@@ -40,30 +53,16 @@ export function createTicketmasterAdapter(config: { apiKey: string; countries: s
     },
 
     async eventsForAttraction(attractionId: string): Promise<NormalizedEvent[]> {
-      const now = new Date();
-      const results: NormalizedEvent[] = [];
-      const seen = new Set<string>();
-      for (const countryCode of config.countries) {
-        // Pagination is capped deliberately: one artist rarely has >200 shows per country.
-        for (let page = 0; page < 2; page++) {
-          const data = await get<{ _embedded?: { events?: TmEvent[] }; page?: { totalPages?: number } }>("/events.json", {
-            attractionId,
-            countryCode,
-            size: "100",
-            page: String(page),
-            sort: "date,asc",
-            locale: "*",
-          });
-          for (const raw of data._embedded?.events ?? []) {
-            if (seen.has(raw.id)) continue;
-            seen.add(raw.id);
-            const normalized = normalizeTicketmasterEvent(raw, now);
-            if (normalized) results.push(normalized);
-          }
-          if ((data.page?.totalPages ?? 1) <= page + 1) break;
-        }
-      }
-      return results;
+      // One request per artist across all markets (max page size 200), filtered to the
+      // configured countries locally. One call instead of one per country keeps daily runs
+      // inside the quota and the serverless time limit.
+      const data = await get<{ _embedded?: { events?: TmEvent[] } }>("/events.json", {
+        attractionId,
+        size: "200",
+        sort: "date,asc",
+        locale: "*",
+      });
+      return filterToCountries(data._embedded?.events ?? [], config.countries, new Date());
     },
   };
 }

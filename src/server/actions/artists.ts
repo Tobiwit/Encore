@@ -24,7 +24,9 @@ export async function updateArtistPreference(artistId: string, patch: z.input<ty
   if (!id.success || !parsed.success || Object.keys(parsed.data).length === 0) return { ok: false, error: "Invalid request" };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("user_artists").update(parsed.data).eq("user_id", user.id).eq("artist_id", id.data);
+  // An explicit interest choice is the user's: the listening-insights algorithm never overrides it.
+  const update = parsed.data.interest_level ? { ...parsed.data, interest_source: "user" as const } : parsed.data;
+  const { error } = await supabase.from("user_artists").update(update).eq("user_id", user.id).eq("artist_id", id.data);
   if (error) return { ok: false, error: "Could not save your change. Please try again." };
   revalidatePath("/artists");
   revalidatePath(`/artists/${id.data}`);

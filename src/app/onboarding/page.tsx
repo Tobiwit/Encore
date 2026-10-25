@@ -13,6 +13,8 @@ import { getMyArtists } from "@/server/data/artists";
 import { getUserLocations } from "@/server/data/events";
 
 export const metadata: Metadata = { title: "Welcome" };
+// Server actions on this page (Spotify import) continue a concert search via after().
+export const maxDuration = 300;
 
 const STEPS = ["import", "artists", "location", "alerts", "privacy"] as const;
 type Step = (typeof STEPS)[number];

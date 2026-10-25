@@ -1,4 +1,5 @@
 import "server-only";
+import { latestRanks, listeningStatus, type Ranks, type TimeRange } from "@/lib/listening";
 import type { InterestLevel } from "@/lib/ranking";
 import type { createClient } from "@/lib/supabase/server";
 import type { ArtistSummary, FriendFace } from "@/lib/types";
@@ -13,10 +14,13 @@ type Row = {
   is_dismissed: boolean;
   notify_enabled: boolean;
   added_source: ArtistSummary["source"];
+  interest_source: "auto" | "user";
+  long_time_fan_since: string | null;
   artist: { id: string; canonical_name: string; image_url: string | null; genres: string[] } | null;
 };
 
-function toSummary(r: Row, upcoming: Map<string, number>): ArtistSummary {
+function toSummary(r: Row, upcoming: Map<string, number>, ranks: Map<string, Ranks> = new Map()): ArtistSummary {
+  const artistRanks = ranks.get(r.artist_id);
   return {
     id: r.artist_id,
     name: r.artist?.canonical_name ?? "Unknown artist",
@@ -27,16 +31,29 @@ function toSummary(r: Row, upcoming: Map<string, number>): ArtistSummary {
     notify: r.notify_enabled,
     source: r.added_source,
     upcomingCount: upcoming.get(r.artist_id) ?? 0,
+    ranks: artistRanks,
+    status: listeningStatus(artistRanks, r.long_time_fan_since),
+    longTimeFanSince: r.long_time_fan_since,
+    interestSource: r.interest_source,
   };
 }
 
 export async function getMyArtists(supabase: Client, userId: string) {
   const { data, error } = await supabase
     .from("user_artists")
-    .select("artist_id, interest_level, is_pinned, is_dismissed, notify_enabled, added_source, artist:artists(id, canonical_name, image_url, genres)")
+    .select(
+      "artist_id, interest_level, is_pinned, is_dismissed, notify_enabled, added_source, interest_source, long_time_fan_since, artist:artists(id, canonical_name, image_url, genres)",
+    )
     .eq("user_id", userId);
   if (error) throw new Error(`Could not load artists: ${error.message}`);
   const rows = (data ?? []) as unknown as Row[];
+
+  // At most three batches are retained per user, so this stays small (≤ 3 × 150 rows).
+  const { data: snapshots } = await supabase
+    .from("artist_listening_snapshots")
+    .select("artist_id, time_range, rank, batch_id, synced_at")
+    .eq("user_id", userId);
+  const ranks = latestRanks((snapshots ?? []) as { artist_id: string; time_range: TimeRange; rank: number; batch_id: string; synced_at: string }[]);
 
   const activeIds = rows.filter((r) => !r.is_dismissed).map((r) => r.artist_id);
   const upcoming = new Map<string, number>();
@@ -53,9 +70,9 @@ export async function getMyArtists(supabase: Client, userId: string) {
   const order: Record<InterestLevel, number> = { love: 0, like: 1, curious: 2 };
   const active = rows
     .filter((r) => !r.is_dismissed)
-    .map((r) => toSummary(r, upcoming))
+    .map((r) => toSummary(r, upcoming, ranks))
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || order[a.interest] - order[b.interest] || a.name.localeCompare(b.name));
-  const removed = rows.filter((r) => r.is_dismissed).map((r) => toSummary(r, upcoming));
+  const removed = rows.filter((r) => r.is_dismissed).map((r) => toSummary(r, upcoming, ranks));
   return { active, removed };
 }
 
@@ -67,6 +84,8 @@ export type TasteStats = {
   manual: number;
   topGenres: { genre: string; count: number }[];
   withUpcoming: number;
+  longTime: number;
+  rotation: number;
 };
 
 export function computeTasteStats(artists: ArtistSummary[]): TasteStats {
@@ -84,16 +103,18 @@ export function computeTasteStats(artists: ArtistSummary[]): TasteStats {
     manual: artists.filter((a) => a.source !== "spotify_import").length,
     topGenres: [...genres.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([genre, count]) => ({ genre, count })),
     withUpcoming: artists.filter((a) => (a.upcomingCount ?? 0) > 0).length,
+    longTime: artists.filter((a) => a.status === "long_time").length,
+    rotation: artists.filter((a) => a.status === "rotation").length,
   };
 }
 
 export async function getArtistDetail(supabase: Client, userId: string, artistId: string) {
-  const { data: artist } = await supabase.from("artists").select("id, canonical_name, image_url, genres").eq("id", artistId).maybeSingle();
+  const { data: artist } = await supabase.from("artists").select("id, canonical_name, image_url, genres, provider_lookup_at, events_refreshed_at").eq("id", artistId).maybeSingle();
   if (!artist) return null;
 
   const [{ data: providers }, { data: mine }, { data: ranks }, { data: eventLinks }, { data: friendRows }] = await Promise.all([
     supabase.from("artist_provider_ids").select("provider, external_url, external_artist_id, match_method, match_confidence").eq("artist_id", artistId),
-    supabase.from("user_artists").select("interest_level, is_pinned, is_dismissed, notify_enabled, added_source").eq("user_id", userId).eq("artist_id", artistId).maybeSingle(),
+    supabase.from("user_artists").select("interest_level, is_pinned, is_dismissed, notify_enabled, added_source, interest_source, long_time_fan_since").eq("user_id", userId).eq("artist_id", artistId).maybeSingle(),
     supabase.from("artist_listening_snapshots").select("time_range, rank, synced_at").eq("user_id", userId).eq("artist_id", artistId).order("synced_at", { ascending: false }).limit(6),
     supabase
       .from("event_artists")
@@ -122,7 +143,7 @@ export async function getArtistDetail(supabase: Client, userId: string, artistId
   return {
     artist,
     spotifyUrl: spotify?.external_url ?? (spotify ? `https://open.spotify.com/artist/${spotify.external_artist_id}` : null),
-    ticketmasterLinked: providers?.some((p) => p.provider === "ticketmaster") ?? false,
+    ticketmaster: providers?.find((p) => p.provider === "ticketmaster") ?? null,
     mine: mine && !mine.is_dismissed ? mine : null,
     wasRemoved: Boolean(mine?.is_dismissed),
     ranks: latestRanks,

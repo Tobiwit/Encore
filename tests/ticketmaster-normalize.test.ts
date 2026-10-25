@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { filterToCountries } from "@/server/providers/ticketmaster/client";
 import { normalizeTicketmasterAttraction, normalizeTicketmasterEvent, type TmEvent } from "@/server/providers/ticketmaster/normalize";
 
 const NOW = new Date("2026-10-25T10:00:00Z");
@@ -126,6 +127,18 @@ describe("normalizeTicketmasterEvent", () => {
   it("marks long-past events as ended", () => {
     const old = normalizeTicketmasterEvent({ ...base, dates: { ...base.dates, start: { dateTime: "2026-01-01T19:00:00Z" } } }, NOW)!;
     expect(old.lifecycle_status).toBe("ended");
+  });
+});
+
+describe("filterToCountries", () => {
+  it("keeps only events in configured countries and drops duplicates", () => {
+    const at = (id: string, countryCode: string): TmEvent => ({
+      ...base,
+      id,
+      _embedded: { ...base._embedded, venues: [{ ...base._embedded!.venues![0], country: { countryCode } }] },
+    });
+    const kept = filterToCountries([at("de", "DE"), at("us", "US"), at("at", "AT"), at("de", "DE")], ["DE", "AT"], NOW);
+    expect(kept.map((e) => e.external_event_id)).toEqual(["de", "at"]);
   });
 });
 

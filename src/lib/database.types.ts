@@ -495,14 +495,14 @@ isOneToOne: false
                   ]
                 },"user_artists": {
                   Row: {
-                    "added_source": Database["public"]['Enums']["artist_added_source"],"artist_id": string,"created_at": string,"id": string,"interest_level": Database["public"]['Enums']["interest_level"],"is_dismissed": boolean,"is_pinned": boolean,"notify_enabled": boolean,"updated_at": string,"user_id": string
+                    "added_source": Database["public"]['Enums']["artist_added_source"],"artist_id": string,"created_at": string,"id": string,"interest_level": Database["public"]['Enums']["interest_level"],"interest_source": Database["public"]['Enums']["interest_source"],"is_dismissed": boolean,"is_pinned": boolean,"long_time_fan_since": string | null,"notify_enabled": boolean,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "added_source": Database["public"]['Enums']["artist_added_source"],"artist_id": string,"created_at"?: string,"id"?: string,"interest_level"?: Database["public"]['Enums']["interest_level"],"is_dismissed"?: boolean,"is_pinned"?: boolean,"notify_enabled"?: boolean,"updated_at"?: string,"user_id": string
+                    "added_source": Database["public"]['Enums']["artist_added_source"],"artist_id": string,"created_at"?: string,"id"?: string,"interest_level"?: Database["public"]['Enums']["interest_level"],"interest_source"?: Database["public"]['Enums']["interest_source"],"is_dismissed"?: boolean,"is_pinned"?: boolean,"long_time_fan_since"?: string | null,"notify_enabled"?: boolean,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "added_source"?: Database["public"]['Enums']["artist_added_source"],"artist_id"?: string,"created_at"?: string,"id"?: string,"interest_level"?: Database["public"]['Enums']["interest_level"],"is_dismissed"?: boolean,"is_pinned"?: boolean,"notify_enabled"?: boolean,"updated_at"?: string,"user_id"?: string
+                    "added_source"?: Database["public"]['Enums']["artist_added_source"],"artist_id"?: string,"created_at"?: string,"id"?: string,"interest_level"?: Database["public"]['Enums']["interest_level"],"interest_source"?: Database["public"]['Enums']["interest_source"],"is_dismissed"?: boolean,"is_pinned"?: boolean,"long_time_fan_since"?: string | null,"notify_enabled"?: boolean,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -634,6 +634,9 @@ isOneToOne: false
             "accept_friend_invite":
 { Args: { "p_token": string }; Returns: string
                            },
+"apply_listening_insights":
+{ Args: { "p_batch_id": string,"p_prune": boolean,"p_user_id": string }; Returns: Json
+                           },
 "are_friends":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
@@ -723,6 +726,11 @@ isOneToOne: false
               "user_id": string
             }[]
                            },
+"get_concert_search_status":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "checked": number,"followed": number,"found": number,"last_run_at": string,"last_run_problem": string,"last_run_status": string,"refreshed": number,"running": boolean,"verified": number
+            }[]
+                           },
 "get_event_friend_interests":
 { Args: { "p_event_id": string }; Returns: {
               "avatar_url": string,"display_name": string,"intention": Database["public"]['Enums']["event_intention"],"updated_at": string,"user_id": string
@@ -797,12 +805,15 @@ isOneToOne: false
 "send_friend_request":
 { Args: { "p_recipient": string }; Returns: string
                            },
+"trigger_notification_delivery":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "unblock_user":
 { Args: { "p_other": string }; Returns: undefined
                            }
           }
           Enums: {
-            "artist_added_source": "spotify_import"|"manual"|"friend_suggestion"|"discovery","connected_account_status": "active"|"revoked"|"error","event_intention": "interested"|"going"|"looking_for_company","event_lifecycle_status": "announced"|"presale_scheduled"|"general_sale_scheduled"|"on_sale"|"offsale"|"postponed"|"rescheduled"|"cancelled"|"ended"|"unknown","friendship_status": "pending"|"accepted"|"declined","interest_level": "love"|"like"|"curious","match_method": "provider_link"|"exact_name"|"manual","notification_job_status": "pending"|"processing"|"delivered"|"suppressed"|"failed"|"cancelled","notification_type": "presale_starting_soon"|"general_sale_starting_soon"|"sale_open"|"new_event"|"event_changed"|"friend_interest"|"friend_request","offer_type": "standard"|"vip"|"package"|"platinum"|"resale"|"other","sale_type": "presale"|"general"|"other","social_visibility": "friends"|"private","spotify_time_range": "short_term"|"medium_term"|"long_term"
+            "artist_added_source": "spotify_import"|"manual"|"friend_suggestion"|"discovery","connected_account_status": "active"|"revoked"|"error","event_intention": "interested"|"going"|"looking_for_company","event_lifecycle_status": "announced"|"presale_scheduled"|"general_sale_scheduled"|"on_sale"|"offsale"|"postponed"|"rescheduled"|"cancelled"|"ended"|"unknown","friendship_status": "pending"|"accepted"|"declined","interest_level": "love"|"like"|"curious","interest_source": "auto"|"user","match_method": "provider_link"|"exact_name"|"manual","notification_job_status": "pending"|"processing"|"delivered"|"suppressed"|"failed"|"cancelled","notification_type": "presale_starting_soon"|"general_sale_starting_soon"|"sale_open"|"new_event"|"event_changed"|"friend_interest"|"friend_request","offer_type": "standard"|"vip"|"package"|"platinum"|"resale"|"other","sale_type": "presale"|"general"|"other","social_visibility": "friends"|"private","spotify_time_range": "short_term"|"medium_term"|"long_term"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -918,7 +929,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "artist_added_source": ["spotify_import", "manual", "friend_suggestion", "discovery"],"connected_account_status": ["active", "revoked", "error"],"event_intention": ["interested", "going", "looking_for_company"],"event_lifecycle_status": ["announced", "presale_scheduled", "general_sale_scheduled", "on_sale", "offsale", "postponed", "rescheduled", "cancelled", "ended", "unknown"],"friendship_status": ["pending", "accepted", "declined"],"interest_level": ["love", "like", "curious"],"match_method": ["provider_link", "exact_name", "manual"],"notification_job_status": ["pending", "processing", "delivered", "suppressed", "failed", "cancelled"],"notification_type": ["presale_starting_soon", "general_sale_starting_soon", "sale_open", "new_event", "event_changed", "friend_interest", "friend_request"],"offer_type": ["standard", "vip", "package", "platinum", "resale", "other"],"sale_type": ["presale", "general", "other"],"social_visibility": ["friends", "private"],"spotify_time_range": ["short_term", "medium_term", "long_term"]
+            "artist_added_source": ["spotify_import", "manual", "friend_suggestion", "discovery"],"connected_account_status": ["active", "revoked", "error"],"event_intention": ["interested", "going", "looking_for_company"],"event_lifecycle_status": ["announced", "presale_scheduled", "general_sale_scheduled", "on_sale", "offsale", "postponed", "rescheduled", "cancelled", "ended", "unknown"],"friendship_status": ["pending", "accepted", "declined"],"interest_level": ["love", "like", "curious"],"interest_source": ["auto", "user"],"match_method": ["provider_link", "exact_name", "manual"],"notification_job_status": ["pending", "processing", "delivered", "suppressed", "failed", "cancelled"],"notification_type": ["presale_starting_soon", "general_sale_starting_soon", "sale_open", "new_event", "event_changed", "friend_interest", "friend_request"],"offer_type": ["standard", "vip", "package", "platinum", "resale", "other"],"sale_type": ["presale", "general", "other"],"social_visibility": ["friends", "private"],"spotify_time_range": ["short_term", "medium_term", "long_term"]
           }
         }
 } as const

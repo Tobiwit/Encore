@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { FollowArtistButton, NotifyToggle, PinToggle, RemoveArtistButton } from "@/components/ArtistActions";
 import { ArtistInterestControl } from "@/components/ArtistInterestControl";
 import { BackLink } from "@/components/BackLink";
@@ -9,7 +10,9 @@ import { GeometricBackground } from "@/components/GeometricBackground";
 import { MusicPreviewPlayer } from "@/components/MusicPreviewPlayer";
 import { RemoteImage } from "@/components/RemoteImage";
 import { EmptyState } from "@/components/states";
+import { TopTracks, TopTracksSkeleton } from "@/components/TopTracks";
 import { SectionHeader } from "@/components/ui";
+import { formatRelativePast } from "@/lib/format";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { getArtistDetail } from "@/server/data/artists";
 
@@ -48,6 +51,11 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
             <h1 className="text-page font-semibold">{artist.canonical_name}</h1>
             {artist.genres.length ? <p className="mt-1 text-support text-fg-secondary">{artist.genres.slice(0, 3).join(" · ")}</p> : null}
             {rankText ? <p className="tabular mt-1 text-meta text-fg-muted">Your Spotify top artists: {rankText}</p> : null}
+            {mine?.long_time_fan_since ? (
+              <p className="mt-2 inline-flex rounded-full bg-accent-muted px-3 py-1 text-meta font-semibold text-fg">
+                Long-time fan · stays on your list
+              </p>
+            ) : null}
           </div>
           {friends.length ? (
             <div className="flex items-center gap-2 text-support text-fg-secondary">
@@ -69,7 +77,10 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
             <PinToggle artistId={artist.id} pinned={mine.is_pinned} />
             <NotifyToggle artistId={artist.id} enabled={mine.notify_enabled} />
           </div>
-          <p className="text-meta text-fg-muted">{SOURCE_LABEL[mine.added_source]}</p>
+          <p className="text-meta text-fg-muted">
+            {SOURCE_LABEL[mine.added_source]}
+            {detail.ticketmaster && Number(detail.ticketmaster.match_confidence) < 0.9 ? " · Matched on Ticketmaster by name only, so no automatic alerts" : ""}
+          </p>
         </section>
       ) : (
         <section className="space-y-2 rounded-lg bg-surface p-4">
@@ -79,6 +90,13 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
           <FollowArtistButton artistId={artist.id} source={friends.length ? "friend_suggestion" : "discovery"} />
         </section>
       )}
+
+      <section aria-labelledby="popular-songs">
+        <SectionHeader id="popular-songs" title="Popular songs" />
+        <Suspense fallback={<TopTracksSkeleton />}>
+          <TopTracks artistName={artist.canonical_name} />
+        </Suspense>
+      </section>
 
       <section aria-labelledby="concerts">
         <SectionHeader id="concerts" title="Upcoming concerts" />
@@ -94,9 +112,13 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
           <EmptyState
             title="No upcoming concerts"
             body={
-              detail.ticketmasterLinked
-                ? "Nothing announced right now. We check regularly and will alert you when a show is announced."
-                : "We haven't found this artist with our ticket providers yet. We'll keep looking."
+              detail.ticketmaster && artist.events_refreshed_at
+                ? `Nothing announced in your countries right now (checked ${formatRelativePast(artist.events_refreshed_at)}). We check daily and will alert you when a show is announced.`
+                : detail.ticketmaster
+                  ? "Found on Ticketmaster — their concert list will be fetched in the next run."
+                  : artist.provider_lookup_at
+                    ? "We couldn't find this artist on Ticketmaster. We'll look again in two weeks."
+                    : "Not checked on Ticketmaster yet. This happens after your Spotify import and once a day."
             }
           />
         )}
