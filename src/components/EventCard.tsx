@@ -10,22 +10,26 @@ import { TicketPrice } from "./TicketPrice";
 import { cn } from "./ui";
 
 /**
- * Compact event row for feeds. The whole card links to the detail page; the save toggle is a
- * separate control (not nested inside the link) so both remain keyboard and screen-reader friendly.
+ * Event card for feeds. The picture is borderless: it bleeds to the card edge, carries the
+ * prism-glass corner, and fades into the card surface where the text begins. The whole card
+ * links to the detail page; the save toggle is a separate control (not nested inside the link).
  */
 export function EventCard({ event, variant = "row" }: { event: EventSummary; variant?: "row" | "feature" }) {
   const dateLabel = formatEventDate(event.startsAt, event.timezone, { timeTba: event.startTimeTba, startDateLocal: event.startDateLocal });
   const place = [event.venueName, event.city].filter(Boolean).join(", ");
   const distance = formatDistance(event.distanceKm);
   const inactive = event.lifecycle === "cancelled" || event.lifecycle === "postponed" || event.lifecycle === "ended";
+  const image = event.imageUrl ?? event.artists[0]?.imageUrl;
 
   if (variant === "feature") {
     return (
-      <article className="relative overflow-hidden rounded-xl bg-surface">
-        <RemoteImage src={event.imageUrl} alt="" rounded="rounded-none" className="aspect-[16/9] w-full" priority />
-        <div className="space-y-3 p-4">
-          <EventStatus lifecycle={event.lifecycle} sales={event.sales} timezone={event.timezone} lastVerifiedAt={event.lastVerifiedAt} />
-          <h3 className="text-section font-semibold text-fg">
+      <article className="group relative isolate overflow-hidden rounded-xl bg-surface">
+        <RemoteImage src={image} alt="" rounded="rounded-none" className="aspect-[16/9] w-full" fade="bottom" prism="lg" priority />
+        <div className="relative -mt-12 space-y-3 px-4 pb-4">
+          <span className="inline-flex rounded-full bg-surface/90">
+            <EventStatus lifecycle={event.lifecycle} sales={event.sales} timezone={event.timezone} lastVerifiedAt={event.lastVerifiedAt} />
+          </span>
+          <h3 className="text-section font-semibold text-balance text-fg">
             <Link href={`/events/${event.id}`} className="after:absolute after:inset-0 after:content-['']">
               {event.title}
             </Link>
@@ -48,9 +52,14 @@ export function EventCard({ event, variant = "row" }: { event: EventSummary; var
   }
 
   return (
-    <article className={cn("relative flex gap-3 rounded-lg bg-surface p-3 transition-colors hover:bg-[#262123]", inactive && "opacity-80")}>
-      <RemoteImage src={event.imageUrl ?? event.artists[0]?.imageUrl} alt="" className="size-[5.5rem] shrink-0" />
-      <div className="min-w-0 flex-1">
+    <article
+      className={cn(
+        "group relative isolate flex min-h-28 overflow-hidden rounded-lg bg-surface transition-colors hover:bg-[#262123]",
+        inactive && "opacity-80",
+      )}
+    >
+      <RemoteImage src={image} alt="" rounded="rounded-none" className="w-28 shrink-0 self-stretch" fade="right" prism="sm" />
+      <div className="relative -ml-2 min-w-0 flex-1 py-3 pr-1">
         <h3 className="line-clamp-2 text-card font-semibold text-fg">
           <Link href={`/events/${event.id}`} className="after:absolute after:inset-0 after:rounded-lg after:content-['']">
             {event.title}
@@ -66,7 +75,7 @@ export function EventCard({ event, variant = "row" }: { event: EventSummary; var
           {event.friends.length ? <FriendAvatarStack friends={event.friends} size={24} /> : null}
         </div>
       </div>
-      <div className="relative z-10 -mr-1 -mt-1 self-start">
+      <div className="relative z-10 shrink-0 self-start p-1">
         <SaveButton eventId={event.id} saved={event.saved} title={event.title} />
       </div>
     </article>

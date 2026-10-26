@@ -46,39 +46,55 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
         <BackLink fallback="/discover" />
       </div>
 
-      <header className="space-y-4">
-        <RemoteImage src={event.imageUrl ?? event.artists[0]?.imageUrl} alt="" rounded="rounded-xl" className="aspect-[16/9] w-full" priority />
-        <EventStatus lifecycle={event.lifecycle} sales={event.sales} timezone={event.timezone} lastVerifiedAt={event.lastVerifiedAt} />
-        <h1 className="text-page font-semibold">{event.title}</h1>
-        {event.artists.length ? (
-          <ul className="flex flex-wrap gap-2">
-            {event.artists.map((a) => (
-              <li key={a.id}>
-                <Link href={`/artists/${a.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-4 font-semibold text-fg hover:bg-surface-elevated">
-                  <RemoteImage src={a.imageUrl} alt="" rounded="rounded-full" className="size-9" />
-                  {a.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <dl className="space-y-2 text-body">
-          <div>
-            <dt className="sr-only">Date</dt>
-            <dd className="tabular font-semibold text-fg">
-              {formatEventDate(event.startsAt, event.timezone, { timeTba: event.startTimeTba, startDateLocal: event.startDateLocal, withYear: true })}
-            </dd>
-            {event.timezone && event.startsAt && !event.startTimeTba ? <dd className="text-meta text-fg-muted">Local time at the venue ({event.timezone})</dd> : null}
-          </div>
-          <div className="flex items-start gap-2 text-fg-secondary">
-            <IconMapPin size={18} className="mt-0.5 shrink-0" />
-            <dd>
-              <span className="block font-semibold text-fg">{event.venueName ?? "Venue to be announced"}</span>
-              {event.address ? <span className="block">{event.address}</span> : null}
-              {event.distanceKm !== null ? <span className="block text-support text-fg-muted">{formatDistance(event.distanceKm)} from your area</span> : null}
-            </dd>
-          </div>
-        </dl>
+      <header>
+        <div className="-mx-4 sm:mx-0">
+          <RemoteImage
+            src={event.imageUrl ?? event.artists[0]?.imageUrl}
+            alt=""
+            rounded="rounded-none sm:rounded-t-xl"
+            className="aspect-[16/9] w-full"
+            fade="bottom"
+            prism="lg"
+            priority
+          />
+        </div>
+        {/* Content rises into the picture's faded lower edge. */}
+        <div className="relative -mt-12 space-y-4">
+          {/* Dark backing keeps the translucent status tint legible over the picture's faded edge. */}
+          <span className="inline-flex rounded-full bg-bg/85">
+            <EventStatus lifecycle={event.lifecycle} sales={event.sales} timezone={event.timezone} lastVerifiedAt={event.lastVerifiedAt} />
+          </span>
+          <h1 className="text-page font-semibold">{event.title}</h1>
+          {event.artists.length ? (
+            <ul className="flex flex-wrap gap-2">
+              {event.artists.map((a) => (
+                <li key={a.id}>
+                  <Link href={`/artists/${a.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-4 font-semibold text-fg hover:bg-surface-elevated">
+                    <RemoteImage src={a.imageUrl} alt="" rounded="rounded-full" className="size-9" />
+                    {a.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <dl className="space-y-2 text-body">
+            <div>
+              <dt className="sr-only">Date</dt>
+              <dd className="tabular font-semibold text-fg">
+                {formatEventDate(event.startsAt, event.timezone, { timeTba: event.startTimeTba, startDateLocal: event.startDateLocal, withYear: true })}
+              </dd>
+              {event.timezone && event.startsAt && !event.startTimeTba ? <dd className="text-meta text-fg-muted">Local time at the venue ({event.timezone})</dd> : null}
+            </div>
+            <div className="flex items-start gap-2 text-fg-secondary">
+              <IconMapPin size={18} className="mt-0.5 shrink-0" />
+              <dd>
+                <span className="block font-semibold text-fg">{event.venueName ?? "Venue to be announced"}</span>
+                {event.address ? <span className="block">{event.address}</span> : null}
+                {event.distanceKm !== null ? <span className="block text-support text-fg-muted">{formatDistance(event.distanceKm)} from your area</span> : null}
+              </dd>
+            </div>
+          </dl>
+        </div>
       </header>
 
       {event.lifecycle === "cancelled" ? (

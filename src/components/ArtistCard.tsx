@@ -17,8 +17,8 @@ const INTEREST_LABEL = { love: "Love", like: "Like", curious: "Curious" } as con
 /** Visual tile for grids (pinned favourites, friend overlap). */
 export function ArtistCard({ artist, href }: { artist: Pick<ArtistSummary, "id" | "name" | "imageUrl" | "pinned">; href?: string }) {
   return (
-    <article className="relative min-w-0">
-      <RemoteImage src={artist.imageUrl} alt="" rounded="rounded-lg" className="aspect-square w-full" />
+    <article className="group relative min-w-0">
+      <RemoteImage src={artist.imageUrl} alt="" rounded="rounded-lg" className="aspect-square w-full" prism="sm" />
       {artist.pinned ? (
         <span className="absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-full bg-bg/80 text-accent" title="Pinned">
           <IconPin size={16} />
