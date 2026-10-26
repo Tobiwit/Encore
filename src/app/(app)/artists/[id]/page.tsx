@@ -6,7 +6,7 @@ import { ArtistInterestControl } from "@/components/ArtistInterestControl";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BackLink } from "@/components/BackLink";
 import { EventCard } from "@/components/EventCard";
-import { FriendAvatarStack } from "@/components/FriendAvatarStack";
+import { FriendAvatarStack, namesLabel } from "@/components/FriendAvatarStack";
 import { GeometricBackground } from "@/components/GeometricBackground";
 import { MusicPreviewPlayer } from "@/components/MusicPreviewPlayer";
 import { RemoteImage } from "@/components/RemoteImage";
@@ -28,6 +28,12 @@ const SOURCE_LABEL: Record<string, string> = {
   friend_suggestion: "Added from a friend's suggestion",
   discovery: "Added while discovering",
 };
+
+/** "loves"/"love" when most of these friends love the artist, otherwise "likes"/"like". */
+function fanVerb(friends: { interest: string }[]) {
+  const loves = friends.filter((f) => f.interest === "love").length >= friends.length / 2;
+  return loves ? (friends.length === 1 ? "loves" : "love") : friends.length === 1 ? "likes" : "like";
+}
 
 function isRecent(iso: string, withinMs: number) {
   return Date.now() - Date.parse(iso) < withinMs;
@@ -74,7 +80,10 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
           {friends.length ? (
             <div className="flex items-center gap-2 text-support text-fg-secondary">
               <FriendAvatarStack friends={friends} />
-              {friends.length === 1 ? `${friends[0].name} likes them too` : `${friends.length} friends like them too`}
+              <span>
+                <span className="font-semibold text-fg">{namesLabel(friends)}</span>{" "}
+                {fanVerb(friends)} them too
+              </span>
             </div>
           ) : null}
           <MusicPreviewPlayer previewUrl={null} spotifyUrl={detail.spotifyUrl} artistName={artist.canonical_name} />

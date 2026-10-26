@@ -44,11 +44,19 @@ export function RemoteImage({
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const show = Boolean(src) && !failed;
+  // A seam's glass reaches past the picture into the card, so the picture (not the frame) fades.
+  const seam = prismAt === "seam";
+  const fadeClass = fade && FADE_CLASS[fade];
 
   return (
-    <div className={cn("relative overflow-hidden bg-surface-elevated", rounded, fade && FADE_CLASS[fade], className)}>
+    <div className={cn("relative", seam ? "overflow-visible" : "overflow-hidden bg-surface-elevated", rounded, !seam && fadeClass, className)}>
       {!loaded || !show ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(120%_90%_at_20%_0%,#3a2f33_0%,#211d1f_60%)] text-fg-muted">
+        <div
+          className={cn(
+            "absolute inset-0 flex items-center justify-center bg-[radial-gradient(120%_90%_at_20%_0%,#3a2f33_0%,#211d1f_60%)] text-fg-muted",
+            seam && fadeClass,
+          )}
+        >
           <IconMusic size={28} />
         </div>
       ) : null}
@@ -68,10 +76,10 @@ export function RemoteImage({
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
           onLoad={() => setLoaded(true)}
-          className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
+          className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0", seam && fadeClass)}
         />
       ) : null}
-      {prism && show && loaded ? <PrismGlass src={src!} band={PRISM_BAND[prism]} seam={prismAt === "seam"} /> : null}
+      {prism && show && loaded ? <PrismGlass src={src!} band={PRISM_BAND[prism]} seam={seam} /> : null}
     </div>
   );
 }
@@ -87,7 +95,20 @@ function PrismGlass({ src, band, seam }: { src: string; band: string; seam: bool
   );
 }
 
-export function Avatar({ src, name, size = 36, className }: { src: string | null | undefined; name: string; size?: number; className?: string }) {
+export function Avatar({
+  src,
+  name,
+  size = 36,
+  className,
+  ring = "ring-bg",
+}: {
+  src: string | null | undefined;
+  name: string;
+  size?: number;
+  className?: string;
+  /** Separator ring; match the surface the avatar sits on. */
+  ring?: string;
+}) {
   const [failed, setFailed] = useState(false);
   const initials = name
     .split(/\s+/)
@@ -97,7 +118,7 @@ export function Avatar({ src, name, size = 36, className }: { src: string | null
     .toUpperCase();
   return (
     <span
-      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-muted font-semibold text-fg ring-2 ring-bg", className)}
+      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-muted font-semibold text-fg ring-2", ring, className)}
       style={{ width: size, height: size, fontSize: Math.max(11, size * 0.36) }}
       aria-hidden={!src || failed ? undefined : true}
     >

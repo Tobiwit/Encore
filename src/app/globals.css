@@ -113,10 +113,10 @@ body {
   -webkit-mask-image: linear-gradient(to bottom, #000 52%, rgb(0 0 0 / 0.55) 76%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 52%, rgb(0 0 0 / 0.55) 76%, transparent 100%);
 }
-/* Keeps most of the picture solid; only the seam where the glass sits dissolves. */
+/* The picture under a glass seam: solid, then handing over to the glass flutes. */
 .image-fade-seam {
-  -webkit-mask-image: linear-gradient(to right, #000 74%, rgb(0 0 0 / 0.7) 88%, transparent 100%);
-  mask-image: linear-gradient(to right, #000 74%, rgb(0 0 0 / 0.7) 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 58%, rgb(0 0 0 / 0.6) 76%, transparent 92%);
+  mask-image: linear-gradient(to right, #000 58%, rgb(0 0 0 / 0.6) 76%, transparent 92%);
 }
 
 /*
@@ -151,9 +151,11 @@ body {
 .prism-glass--seam {
   --angle: 98deg;
   --phase: 1.0098;
-  --tint-at: 100% 40%;
-  -webkit-mask-image: linear-gradient(to left, #000 0%, rgb(0 0 0 / 0.95) 22%, transparent 58%);
-  mask-image: linear-gradient(to left, #000 0%, rgb(0 0 0 / 0.95) 22%, transparent 58%);
+  --tint-at: 90% 40%;
+  /* Reaches past the picture into the card: the card surface becomes part of the glass. */
+  right: -0.75rem;
+  -webkit-mask-image: linear-gradient(to right, transparent 32%, #000 52%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 32%, #000 52%, #000 80%, transparent 100%);
 }
 
 .prism-glass__slice {
@@ -188,7 +190,13 @@ body {
   transform: translate3d(-6%, 0, 0) scale(1.04);
 }
 .prism-glass--seam .prism-glass__slice--b {
-  transform: translate3d(7%, 1%, 0) scale(1.1);
+  /* Every other flute is filled with the card surface, so the card cuts into the picture
+     in glass strips instead of the picture simply blurring away. */
+  background-image: none;
+  background-color: var(--seam-surface, var(--color-surface));
+  filter: none;
+  opacity: 1;
+  transform: translate3d(2%, 0, 0);
 }
 
 .prism-glass__sheen {

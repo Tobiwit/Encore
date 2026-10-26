@@ -126,10 +126,13 @@ export async function getArtistDetail(supabase: Client, userId: string, artistId
     supabase.from("user_artists").select("user_id, interest_level").eq("artist_id", artistId).neq("user_id", userId).eq("is_dismissed", false),
   ]);
 
-  let friends: FriendFace[] = [];
+  let friends: (FriendFace & { interest: InterestLevel })[] = [];
   if (friendRows?.length) {
     const { data: profiles } = await supabase.rpc("get_profiles", { p_ids: friendRows.map((f) => f.user_id) });
-    friends = (profiles ?? []).map((p) => ({ id: p.id, name: p.display_name, avatarUrl: p.avatar_url }));
+    const level = new Map(friendRows.map((f) => [f.user_id, f.interest_level as InterestLevel]));
+    friends = (profiles ?? [])
+      .map((p) => ({ id: p.id, name: p.display_name, avatarUrl: p.avatar_url, interest: level.get(p.id) ?? "like" }))
+      .sort((a, b) => Number(b.interest === "love") - Number(a.interest === "love"));
   }
 
   const events = await getEventSummaries(supabase, userId, (eventLinks ?? []).map((e) => e.event_id));

@@ -3,7 +3,8 @@ import type { Lifecycle, SalePhase } from "@/lib/events";
 import { haversineKm } from "@/lib/format";
 import { rankEvents, type InterestLevel, type Ranked } from "@/lib/ranking";
 import type { createClient } from "@/lib/supabase/server";
-import type { EventSummary, FriendFace, PriceSummary } from "@/lib/types";
+import type { EventSummary, FriendFace, FriendFanFace, PriceSummary } from "@/lib/types";
+import { friendFansByArtist, type FriendFan } from "./social";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
@@ -79,9 +80,20 @@ export function toSummary(
     interests: Map<string, { interest: InterestLevel; pinned: boolean }>;
     saved: Set<string>;
     friends: Map<string, FriendFace[]>;
+    fans?: Map<string, FriendFan[]>;
   },
 ): EventSummary {
   const near = nearest(ctx.locations, e.venue);
+  const friends = ctx.friends.get(e.id) ?? [];
+  // Friends who follow one of the artists but have no plan for this event yet (one entry each).
+  const planned = new Set(friends.map((f) => f.id));
+  const friendFans: FriendFanFace[] = [];
+  for (const ea of e.event_artists) {
+    for (const fan of ctx.fans?.get(ea.artist_id) ?? []) {
+      if (planned.has(fan.id) || friendFans.some((f) => f.id === fan.id)) continue;
+      friendFans.push({ ...fan, artistName: ea.artist?.canonical_name ?? "" });
+    }
+  }
   return {
     id: e.id,
     title: e.canonical_title,
@@ -117,7 +129,8 @@ export function toSummary(
         pinned: ctx.interests.get(ea.artist_id)?.pinned ?? false,
         matchConfidence: Number(ea.match_confidence),
       })),
-    friends: ctx.friends.get(e.id) ?? [],
+    friends,
+    friendFans,
     saved: ctx.saved.has(e.id),
   };
 }
@@ -205,8 +218,11 @@ export async function getDiscoverFeed(supabase: Client, userId: string): Promise
 
   const saved = new Set((savedRows ?? []).map((r) => r.event_id));
   const dismissed = new Set((dismissedRows ?? []).map((r) => r.event_id));
-  const friends = await friendInterestsFor(supabase, userId, inArea.map((e) => e.id));
-  const summaries = new Map(inArea.map((e) => [e.id, toSummary(e, { locations, interests, saved, friends })]));
+  const [friends, fans] = await Promise.all([
+    friendInterestsFor(supabase, userId, inArea.map((e) => e.id)),
+    friendFansByArtist(supabase, userId, inArea.flatMap((e) => e.event_artists.map((ea) => ea.artist_id))),
+  ]);
+  const summaries = new Map(inArea.map((e) => [e.id, toSummary(e, { locations, interests, saved, friends, fans })]));
 
   const ranked: Ranked[] = rankEvents(
     [...summaries.values()].map((s) => ({
@@ -254,9 +270,12 @@ export async function getEventSummaries(supabase: Client, userId: string, ids: s
     raw.push(...((data ?? []) as unknown as RawEvent[]));
   }
   const interests = new Map((follows ?? []).map((f) => [f.artist_id, { interest: f.interest_level as InterestLevel, pinned: f.is_pinned }]));
-  const friends = await friendInterestsFor(supabase, userId, ids);
+  const [friends, fans] = await Promise.all([
+    friendInterestsFor(supabase, userId, ids),
+    friendFansByArtist(supabase, userId, raw.flatMap((e) => e.event_artists.map((ea) => ea.artist_id))),
+  ]);
   const saved = new Set((savedRows ?? []).map((r) => r.event_id));
-  const byId = new Map(raw.map((e) => [e.id, toSummary(e, { locations, interests, saved, friends })]));
+  const byId = new Map(raw.map((e) => [e.id, toSummary(e, { locations, interests, saved, friends, fans })]));
   return ids.map((id) => byId.get(id)).filter((e): e is EventSummary => Boolean(e));
 }
 

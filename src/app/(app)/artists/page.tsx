@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArtistCard, ArtistRow } from "@/components/ArtistCard";
+import { ArtistRow } from "@/components/ArtistCard";
+import { FavouritesMosaic, pickFavourites, pickShared, SharedFavourites } from "@/components/ArtistShowcase";
 import { RestoreArtistButton } from "@/components/ArtistActions";
 import { ConcertSearchStatus, getConcertSearchStatus } from "@/components/ConcertSearchStatus";
 import { GlassPanel } from "@/components/GeometricBackground";
@@ -14,6 +15,7 @@ import type { InterestLevel } from "@/lib/ranking";
 import type { ArtistSummary } from "@/lib/types";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { computeTasteStats, getMyArtists } from "@/server/data/artists";
+import { friendFansByArtist } from "@/server/data/social";
 
 export const metadata: Metadata = { title: "Artists" };
 // Server actions on this page (Spotify import) continue a concert search via after().
@@ -77,7 +79,17 @@ export default async function ArtistsPage({ searchParams }: PageProps<"/artists"
   ]);
 
   const stats = computeTasteStats(active);
-  const pinned = active.filter((a) => a.pinned);
+  const favourites = pickFavourites(active);
+  const [fans, { data: friendList }] = await Promise.all([
+    friendFansByArtist(
+      supabase,
+      user.id,
+      active.filter((a) => a.interest !== "curious").map((a) => a.id),
+    ),
+    supabase.rpc("get_friends"),
+  ]);
+  const shared = pickShared(active, fans);
+  const hasFriends = (friendList?.length ?? 0) > 0;
   const shown = select(active, view);
   const ranked = RANGE_VIEWS.has(view);
 
@@ -115,6 +127,41 @@ export default async function ArtistsPage({ searchParams }: PageProps<"/artists"
         />
       ) : (
         <>
+          <section aria-labelledby="favourites">
+            <SectionHeader id="favourites" title="Your favourites" />
+            <FavouritesMosaic artists={favourites} />
+          </section>
+
+          <section aria-labelledby="shared">
+            <SectionHeader
+              id="shared"
+              title="Shared with friends"
+              action={
+                shared.length ? (
+                  <span className="tabular text-support text-fg-secondary">
+                    {shared.length} artist{shared.length === 1 ? "" : "s"}
+                  </span>
+                ) : undefined
+              }
+            />
+            {shared.length ? (
+              <SharedFavourites items={shared} />
+            ) : (
+              <p className="rounded-lg bg-surface px-4 py-3 text-support text-fg-secondary">
+                {hasFriends ? (
+                  "None of your friends follow your favourites yet — or they keep their fan list private."
+                ) : (
+                  <>
+                    <Link href="/friends" className="font-semibold text-fg underline underline-offset-2">
+                      Invite friends
+                    </Link>{" "}
+                    to see which favourites you share.
+                  </>
+                )}
+              </p>
+            )}
+          </section>
+
           <GlassPanel>
             <div className="p-5">
               <h2 className="text-meta font-semibold uppercase tracking-wide text-fg-secondary">Your taste</h2>
@@ -144,19 +191,6 @@ export default async function ArtistsPage({ searchParams }: PageProps<"/artists"
           </GlassPanel>
 
           {searchStatus ? <ConcertSearchStatus status={searchStatus} /> : null}
-
-          {pinned.length ? (
-            <section aria-labelledby="pinned">
-              <SectionHeader id="pinned" title="Pinned" />
-              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                {pinned.slice(0, 8).map((a) => (
-                  <li key={a.id}>
-                    <ArtistCard artist={a} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
 
           <section aria-labelledby="fan-list">
             <SectionHeader id="fan-list" title="Fan list" action={account?.status === "active" ? <SpotifyRefreshButton compact /> : undefined} />

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { DismissEventButton } from "@/components/DismissEventButton";
+import { FriendSocialLine } from "@/components/FriendAvatarStack";
 import { EventStatus } from "@/components/EventStatus";
 import { IconExternal, IconMapPin } from "@/components/icons";
 import { IntentionControl } from "@/components/IntentionControl";
@@ -111,9 +112,10 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
         <SaveButton eventId={event.id} saved={event.saved} title={event.title} withLabel />
       </div>
 
-      {event.friends.length ? (
+      {event.friends.length || event.friendFans.length ? (
         <section aria-labelledby="friends-going">
           <SectionHeader id="friends-going" title="Friends" />
+          <FriendSocialLine friends={event.friends} fans={event.friendFans} ring="ring-bg" className="mb-3" />
           <ul className="space-y-2">
             {event.friends.map((f) => (
               <li key={f.id} className="flex items-center gap-3 rounded-lg bg-surface p-3">
