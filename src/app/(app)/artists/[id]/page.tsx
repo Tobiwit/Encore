@@ -60,7 +60,7 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
       <header className="relative isolate overflow-hidden rounded-xl bg-surface">
         <GeometricBackground />
         <div className="glass relative flex flex-col items-center gap-4 rounded-xl px-5 pb-6 pt-8 text-center">
-          <RemoteImage src={artist.image_url} alt={`Photo of ${artist.canonical_name}`} rounded="rounded-full" className="size-40 ring-4 ring-bg/60" prism="md" priority />
+          <RemoteImage src={artist.image_url} alt={`Photo of ${artist.canonical_name}`} rounded="rounded-xl" className="size-52 shadow-[0_12px_40px_-12px_rgb(0_0_0/0.6)]" prism="md" priority />
           <div>
             <h1 className="text-page font-semibold">{artist.canonical_name}</h1>
             {artist.genres.length ? <p className="mt-1 text-support text-fg-secondary">{artist.genres.slice(0, 3).join(" · ")}</p> : null}

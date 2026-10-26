@@ -9,7 +9,7 @@ const PRISM_BAND = { sm: "5px", md: "9px", lg: "14px" } as const;
 
 const FADE_CLASS = {
   bottom: "image-fade-bottom",
-  right: "image-fade-right",
+  seam: "image-fade-seam",
 } as const;
 
 /**
@@ -17,9 +17,10 @@ const FADE_CLASS = {
  * Plain <img> on purpose: provider CDNs vary and must not break rendering when unknown.
  *
  * - `fade` dissolves one edge into whatever surface sits behind (borderless cards).
- * - `prism` adds the signature sliced-glass corner: the picture refracted through diagonal
- *   glass bands from the top-left, fading back into the clean image. It settles in when the
- *   picture loads and shimmers when the surrounding `.group` is hovered or focused.
+ * - `prism` adds the signature fluted glass (band size), placed by `prismAt`:
+ *   "corner" refracts the top-left corner diagonally; "seam" runs near-vertical flutes along the
+ *   right edge so the picture breaks up into glass where it meets the text. It settles in when
+ *   the picture loads and shimmers when the surrounding `.group` is hovered or focused.
  */
 export function RemoteImage({
   src,
@@ -29,6 +30,7 @@ export function RemoteImage({
   priority = false,
   fade,
   prism,
+  prismAt = "corner",
 }: {
   src: string | null | undefined;
   alt: string;
@@ -37,6 +39,7 @@ export function RemoteImage({
   priority?: boolean;
   fade?: keyof typeof FADE_CLASS;
   prism?: keyof typeof PRISM_BAND;
+  prismAt?: "corner" | "seam";
 }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -68,15 +71,15 @@ export function RemoteImage({
           className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")}
         />
       ) : null}
-      {prism && show && loaded ? <PrismGlass src={src!} band={PRISM_BAND[prism]} /> : null}
+      {prism && show && loaded ? <PrismGlass src={src!} band={PRISM_BAND[prism]} seam={prismAt === "seam"} /> : null}
     </div>
   );
 }
 
-function PrismGlass({ src, band }: { src: string; band: string }) {
+function PrismGlass({ src, band, seam }: { src: string; band: string; seam: boolean }) {
   const style = { "--prism-src": `url("${src.replace(/"/g, "%22")}")`, "--band": band } as CSSProperties;
   return (
-    <div className="prism-glass" style={style} aria-hidden="true">
+    <div className={cn("prism-glass", seam && "prism-glass--seam")} style={style} aria-hidden="true">
       <div className="prism-glass__slice prism-glass__slice--a" />
       <div className="prism-glass__slice prism-glass__slice--b" />
       <div className="prism-glass__sheen" />

@@ -54,12 +54,15 @@ export function EventCard({ event, variant = "row" }: { event: EventSummary; var
   return (
     <article
       className={cn(
-        "group relative isolate flex min-h-28 overflow-hidden rounded-lg bg-surface transition-colors hover:bg-[#262123]",
+        "group relative isolate flex min-h-[8.5rem] overflow-hidden rounded-lg bg-surface transition-colors hover:bg-[#262123]",
         inactive && "opacity-80",
       )}
     >
-      <RemoteImage src={image} alt="" rounded="rounded-none" className="w-28 shrink-0 self-stretch" fade="right" prism="sm" />
-      <div className="relative -ml-2 min-w-0 flex-1 py-3 pr-1">
+      {/* Square picture spanning the card's full height; its right edge breaks into glass flutes. */}
+      <div className="absolute inset-y-0 left-0 aspect-square">
+        <RemoteImage src={image} alt="" rounded="rounded-none" className="size-full" fade="seam" prism="md" prismAt="seam" />
+      </div>
+      <div className="relative min-w-0 flex-1 py-2.5 pl-32 pr-1">
         <h3 className="line-clamp-2 text-card font-semibold text-fg">
           <Link href={`/events/${event.id}`} className="after:absolute after:inset-0 after:rounded-lg after:content-['']">
             {event.title}
@@ -70,7 +73,7 @@ export function EventCard({ event, variant = "row" }: { event: EventSummary; var
           {place || "Venue to be announced"}
           {distance ? ` · ${distance}` : ""}
         </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <EventStatus compact lifecycle={event.lifecycle} sales={event.sales} timezone={event.timezone} lastVerifiedAt={event.lastVerifiedAt} />
           {event.friends.length ? <FriendAvatarStack friends={event.friends} size={24} /> : null}
         </div>
